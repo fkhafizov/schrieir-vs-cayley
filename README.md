@@ -6,11 +6,28 @@
 * https://chatgpt.com/c/6aaf3ad4-19bc-83ea-ac97-787133cb5231
 * https://cursor.com/agents/bc-0e030562-3c28-41dd-8c79-e5d393d21da6
 
+-------
+
+
+
+
+* https://fkhafizov.github.io/schrieir-vs-cayley/schreier-vs-cayley-fable5.1.html
+* https://fkhafizov.github.io/schrieir-vs-cayley/schreier-vs-cayley-astra6.html
+* https://fkhafizov.github.io/schrieir-vs-cayley/schreier-vs-cayley.prompt.md
+
+* https://github.com/fkhafizov/schrieir-vs-cayley
+* schreier-vs-cayley-astra6.html
+* schreier-vs-cayley-fable5.1.html
+* schreier-vs-cayley.prompt.md
+
+-------
+
 ```
 claude cowork project cc4-proofs 
-
 /Users/paulpaul/CODING/ai-agents/cc4-proofs
+```
 
+```
 (base)  19:02 paulpaul ~/CODING/ai-agents/cc4-proofs $  pwd
 /Users/paulpaul/CODING/ai-agents/cc4-proofs
 (base)  19:02 paulpaul ~/CODING/ai-agents/cc4-proofs $  ls -ltra
