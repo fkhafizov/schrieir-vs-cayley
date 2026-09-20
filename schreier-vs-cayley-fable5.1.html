@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cayley vs Schreier — why G_c(k,n) is not a Cayley graph</title>
+<style>
+:root{
+  --bg:#f6f7fb; --card:#fff; --ink:#1c2230; --muted:#5b6478; --line:#dfe3ec;
+  --cayley:#4f46e5; --cayley-soft:#eceafe;
+  --schreier:#0d7f73; --schreier-soft:#e2f3f0;
+  --highlight:#d97706;
+  --math:"Latin Modern Math","STIX Two Math",Cambria,Georgia,serif;
+  --ui:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--ui);font-size:15px;line-height:1.55;
+  font-variant-numeric:tabular-nums}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 20px 56px}
+h1{font-family:var(--math);font-weight:600;font-size:30px;line-height:1.2;margin:0 0 10px;letter-spacing:-.005em}
+.lede{max-width:74ch;color:var(--muted);margin:0 0 20px}
+.m{font-family:var(--math);font-style:italic;font-size:1.08em;white-space:nowrap}
+.mr{font-family:var(--math);font-style:normal;font-size:1.08em;white-space:nowrap}
+sub{font-size:.72em;line-height:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 1px 2px rgba(28,34,48,.04)}
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:18px 26px;padding:14px 18px;margin-bottom:16px}
+.ctl{display:flex;align-items:center;gap:10px}
+.ctl label{font-size:14px;color:var(--muted)}
+.ctl output{display:inline-block;min-width:1.2em;font-weight:600}
+input[type=range]{width:130px;accent-color:var(--cayley)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:#fff;padding:6px 14px;font:inherit;color:var(--muted);cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed=true]{background:var(--cayley-soft);color:var(--cayley);font-weight:600}
+.seg button:disabled{opacity:.4;cursor:not-allowed}
+.actions{margin-left:auto;display:flex;gap:8px}
+.btn{font:inherit;font-weight:600;font-size:13px;letter-spacing:.06em;padding:8px 16px;border-radius:8px;
+  border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer}
+.btn:hover{border-color:#c5cbd9}
+.btn.primary{background:var(--cayley);border-color:var(--cayley);color:#fff}
+.btn.primary:disabled{opacity:.45;cursor:default}
+button:focus-visible,input:focus-visible{outline:2px solid var(--highlight);outline-offset:2px}
+.panels{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:860px){.panels{grid-template-columns:1fr}.actions{margin-left:0}}
+.panel{overflow:hidden;min-width:0}
+.phead{padding:12px 16px 10px;border-bottom:1px solid var(--line)}
+.tag{display:inline-block;font-size:11px;letter-spacing:.12em;font-weight:700;padding:2px 8px;border-radius:5px;margin-right:8px;vertical-align:2px}
+.cay .tag{background:var(--cayley-soft);color:var(--cayley)}
+.sch .tag{background:var(--schreier-soft);color:var(--schreier)}
+.ptitle{font-size:17px}
+.psub{font-size:13.5px;color:var(--muted);margin-top:2px}
+.cwrap{position:relative;height:420px}
+canvas{display:block;width:100%;height:420px;cursor:crosshair}
+.overlay{position:absolute;left:12px;top:10px;font-size:12.5px;background:rgba(255,255,255,.88);
+  border:1px solid var(--line);border-radius:7px;padding:3px 9px;pointer-events:none;max-width:calc(100% - 24px)}
+.cay .overlay b{color:var(--cayley)} .sch .overlay b{color:var(--schreier)}
+.pfoot{display:flex;flex-wrap:wrap;gap:4px 18px;padding:9px 16px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+.pfoot b{color:var(--ink);font-weight:600}
+.legend{display:flex;flex-wrap:wrap;gap:6px 20px;align-items:center;font-size:13px;color:var(--muted);margin:14px 2px}
+.sw{display:inline-block;width:11px;height:11px;border-radius:50%;border:1px solid #9aa3b5;vertical-align:-1px;margin-right:5px}
+.sw.ring{background:transparent;border:2px solid var(--highlight)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px}
+@media (max-width:860px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{padding:14px 16px;min-width:0}
+.stat .cap{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.stat .num{font-size:28px;font-weight:650;line-height:1.2;margin-top:2px;overflow-wrap:anywhere}
+.stat .sub{font-size:13px;color:var(--muted)}
+.stat.c .num{color:var(--cayley)} .stat.s .num{color:var(--schreier)} .stat.h .num{color:var(--highlight)}
+.prose{padding:16px 20px;margin-bottom:16px}
+.prose p{margin:0;max-width:92ch}
+.prose p+p{margin-top:.7em}
+.find{padding:16px 20px}
+.find h2,.modal h2{font-family:var(--math);font-size:20px;margin:0 0 8px;font-weight:600}
+.tscroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:left;font-weight:600}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.v{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:5px;white-space:nowrap}
+.v.bad{background:#fdecec;color:#b42318}.v.ok{background:var(--schreier-soft);color:var(--schreier)}.v.warn{background:#fdf1dd;color:#a85a05}
+.note{font-size:13px;color:var(--muted);margin:10px 0 0}
+.backdrop{position:fixed;inset:0;background:rgba(28,34,48,.38);display:none;align-items:flex-start;justify-content:center;padding:5vh 16px;overflow:auto;z-index:10}
+.backdrop.open{display:flex}
+.modal{max-width:680px;width:100%;padding:22px 26px}
+.modal h3{font-size:15px;margin:16px 0 4px}
+.modal p{margin:0 0 6px}
+.modal .close{float:right}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Cayley vs Schreier — why <span class="m">G<sub>c</sub></span><span class="mr">(</span><span class="m">k</span><span class="mr">,</span><span class="m">n</span><span class="mr">)</span> is not a Cayley graph</h1>
+    <p class="lede">A Cayley graph has one vertex for every group element. A Schreier coset graph has one vertex for every coset.
+    The graphs <span class="m">G<sub>c</sub></span><span class="mr">(</span><span class="m">k</span><span class="mr">,</span><span class="m">n</span><span class="mr">)</span> of binary words under consecutive <span class="m">c</span>-cycles are the second kind, although they are often printed under the first name.
+    Press START to watch the left graph fold onto the right one.</p>
+  </header>
+
+  <section class="card controls" aria-label="Parameters">
+    <div class="ctl"><label for="nR"><span class="m">n</span> word length</label><input id="nR" type="range" min="3" max="6" value="4"><output id="nO">4</output></div>
+    <div class="ctl"><label for="kR"><span class="m">k</span> zeros</label><input id="kR" type="range" min="1" max="3" value="2"><output id="kO">2</output></div>
+    <div class="ctl"><label id="cL"><span class="m">c</span> cycle length</label>
+      <div class="seg" role="group" aria-labelledby="cL"><button id="c3" aria-pressed="true">3</button><button id="c4" aria-pressed="false">4</button></div></div>
+    <div class="actions">
+      <button class="btn primary" id="start">START</button>
+      <button class="btn" id="reset">RESET</button>
+      <button class="btn" id="help">HELP</button>
+    </div>
+  </section>
+
+  <section class="panels">
+    <div class="card panel cay">
+      <div class="phead"><span class="tag">CAYLEY</span><span class="ptitle"><span class="mr">Cay(</span><span class="m">S<sub>n</sub></span><span class="mr">,</span> consecutive <span class="m" id="cT1">3</span>-cycles<span class="mr">)</span></span>
+        <div class="psub">One vertex per <b>group element</b>. Every bead is a different color.</div></div>
+      <div class="cwrap"><canvas id="cvC"></canvas><div class="overlay" id="ovC"></div></div>
+      <div class="pfoot" id="ftC"></div>
+    </div>
+    <div class="card panel sch">
+      <div class="phead"><span class="tag">SCHREIER</span><span class="ptitle"><span class="m">G<sub id="cT2">3</sub></span><span class="mr">(</span><span class="m">k</span><span class="mr">,</span><span class="m">n</span><span class="mr">) = </span><span class="m">S<sub>n</sub></span><span class="mr"> / (</span><span class="m">S<sub>k</sub></span><span class="mr"> × </span><span class="m">S<sub>n−k</sub></span><span class="mr">)</span></span>
+        <div class="psub">One vertex per <b>coset</b>. Beads come in two colors only.</div></div>
+      <div class="cwrap"><canvas id="cvS"></canvas><div class="overlay" id="ovS"></div></div>
+      <div class="pfoot" id="ftS"></div>
+    </div>
+  </section>
+
+  <div class="legend">
+    <span><span class="sw" style="background:rgb(35,42,58)"></span>bead sitting on a 0</span>
+    <span><span class="sw" style="background:rgb(233,237,245)"></span>bead sitting on a 1</span>
+    <span><span class="sw ring"></span>highlighted fiber</span>
+    <span>Hover either panel to light up one fiber.</span>
+  </div>
+
+  <section class="stats">
+    <div class="card stat c"><div class="cap">Cayley rooms</div><div class="num" id="stC"></div><div class="sub"><span class="m">n</span><span class="mr">!</span></div></div>
+    <div class="card stat s"><div class="cap">Schreier rooms</div><div class="num" id="stS"></div><div class="sub"><span class="m">C</span><span class="mr">(</span><span class="m">n</span><span class="mr">,</span><span class="m">k</span><span class="mr">)</span></div></div>
+    <div class="card stat"><div class="cap">Fiber size</div><div class="num" id="stF"></div><div class="sub"><span class="m">k</span><span class="mr">! (</span><span class="m">n</span><span class="mr"> − </span><span class="m">k</span><span class="mr">)!</span></div></div>
+    <div class="card stat h"><div class="cap">Information lost</div><div class="num" id="stL"></div><div class="sub">Cayley edges that become loops</div></div>
+  </section>
+
+  <section class="card prose" id="prose" aria-live="polite"></section>
+
+  <section class="card find">
+    <h2>Where the manuscript names the object</h2>
+    <div class="tscroll"><table><thead><tr><th>Line</th><th>Text</th><th>Verdict</th><th>Comment</th></tr></thead><tbody id="findBody"></tbody></table></div>
+    <p class="note">Sample rows. Edit the <code>FINDINGS</code> array near the top of the script to list your own source.</p>
+  </section>
+</div>
+
+<div class="backdrop" id="backdrop">
+  <div class="card modal" role="dialog" aria-modal="true" aria-labelledby="hT">
+    <button class="btn close" id="closeHelp">Close</button>
+    <h2 id="hT">What you are looking at</h2>
+    <h3>The bead analogy</h3>
+    <p>Thread <span class="m">n</span> beads on a wire, each with its own label. The Cayley graph is a map with one room for every arrangement of those labeled beads, <span class="m">n</span><span class="mr">!</span> rooms in all, and a corridor wherever one allowed move (rotating <span class="m">c</span> neighboring beads) turns one arrangement into another.</p>
+    <p>Now repaint the beads: <span class="m">k</span> of them dark, the rest light. You can no longer tell the dark beads apart, nor the light ones. Blocks of <span class="m">k</span><span class="mr">!(</span><span class="m">n</span><span class="mr">−</span><span class="m">k</span><span class="mr">)!</span> rooms that differed only by which dark bead was where become a single room. Same moves, coarser map. That coarser map is the Schreier graph, and START performs the repainting.</p>
+    <h3>Why the names differ</h3>
+    <p>A Cayley graph <span class="mr">Cay(</span><span class="m">G</span><span class="mr">,</span> <span class="m">S</span><span class="mr">)</span> has the elements of <span class="m">G</span> as vertices. A Schreier graph has the cosets of a subgroup <span class="m">H</span> as vertices; here <span class="m">H</span> <span class="mr">= Stab(0<sup>k</sup>1<sup>n−k</sup>) =</span> <span class="m">S<sub>k</sub></span> <span class="mr">×</span> <span class="m">S<sub>n−k</sub></span>. The two notions coincide only when <span class="m">H</span> is trivial, so that every coset is a single element.</p>
+    <h3>A test you can apply by eye</h3>
+    <p>A Cayley graph is always vertex-transitive, hence regular, and it is connected exactly when the generators generate the whole group. A Schreier graph need be neither regular nor vertex-transitive. Try <span class="m">c</span> <span class="mr">= 4,</span> <span class="m">n</span> <span class="mr">= 4,</span> <span class="m">k</span> <span class="mr">= 2</span>: the right panel has vertices of degree 1 and of degree 2, which no Cayley graph can have.</p>
+    <h3>What the collapse costs</h3>
+    <p>Merged rooms mean merged corridors. A move that only swaps beads of the same color stays inside one room and becomes a loop, invisible on the coarse map. Distances on the coarse map can therefore only shrink, which is why a lower bound derived from the Schreier graph can sit strictly below the true distance in the Cayley graph.</p>
+    <h3>Controls</h3>
+    <p>START runs the collapse. RESET rebuilds both layouts from the same seed. Hovering a vertex in either panel outlines its whole fiber on the left and the matching coset on the right.</p>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ---------- content: replace with your own source ---------- */
+const FINDINGS = [
+  {line:"115",  text:'"The <b>Cayley</b> graph G₃(k,n) generated from S_n/S_k×S_{n−k}"', cls:"bad", verdict:"wrong name", note:"Vertices are cosets, so this is a Schreier graph."},
+  {line:"3219", text:'"Let G₄(k,n) be the <b>Schreier</b> graph associated with S_n/(S_k × S_{n−k})"', cls:"ok", verdict:"correct", note:"Right name, and the quotient is parenthesized."},
+  {line:"115",  text:'S_n/S_k×S_{n−k}', cls:"warn", verdict:"notation slip", note:"Parses as (S_n/S_k)×S_{n−k}, a different object. The parentheses in S_n/(S_k×S_{n−k}) are load-bearing."}
+];
+
+/* ---------- mathematics (spec section 2) ---------- */
+function factorial(n){let r=1;for(let i=2;i<=n;i++)r*=i;return r;}
+function binom(n,k){return factorial(n)/(factorial(k)*factorial(n-k));}
+function makeGens(n,c){
+  const gs=[];
+  for(let i=0;i+c<=n;i++){
+    const g=[];for(let j=0;j<n;j++)g.push(j);
+    g[i]=i+c-1;for(let j=i+1;j<i+c;j++)g[j]=j-1;
+    const inv=new Array(n);for(let j=0;j<n;j++)inv[g[j]]=j;
+    gs.push(g,inv);
+  }
+  return gs;
+}
+function act(s,w){const r=new Array(w.length);for(let i=0;i<w.length;i++)r[s[i]]=w[i];return r;} // (s.w)[s[i]] = w[i]
+function compose(g,s){const r=new Array(s.length);for(let i=0;i<s.length;i++)r[i]=g[s[i]];return r;} // left mult: g after s
+function allPerms(n){
+  const out=[],cur=[],used=new Array(n).fill(false);
+  (function rec(){ if(cur.length===n){out.push(cur.slice());return;}
+    for(let i=0;i<n;i++)if(!used[i]){used[i]=true;cur.push(i);rec();cur.pop();used[i]=false;} })();
+  return out;
+}
+function allWords(n,k){
+  const out=[];
+  for(let m=0;m<(1<<n);m++){let z=0;const w=[];for(let i=0;i<n;i++){const b=(m>>(n-1-i))&1;w.push(b);if(!b)z++;}if(z===k)out.push(w);}
+  return out;
+}
+function graphInfo(N,edges){
+  const deg=new Int32Array(N),par=new Int32Array(N);for(let i=0;i<N;i++)par[i]=i;
+  const find=x=>{while(par[x]!==x){par[x]=par[par[x]];x=par[x];}return x;};
+  for(let e=0;e<edges.length;e+=2){deg[edges[e]]++;deg[edges[e+1]]++;par[find(edges[e])]=find(edges[e+1]);}
+  let comps=0,mn=Infinity,mx=-Infinity;
+  for(let i=0;i<N;i++){if(find(i)===i)comps++;if(deg[i]<mn)mn=deg[i];if(deg[i]>mx)mx=deg[i];}
+  return {comps,degMin:mn,degMax:mx};
+}
+function buildEdges(N,items,index,gens,mul){
+  const seen=new Set(),out=[];
+  for(let a=0;a<N;a++)for(const g of gens){
+    const b=index.get(mul(g,items[a]).join(""));
+    if(b===a)continue;
+    const key=a<b?a*N+b:b*N+a;
+    if(!seen.has(key)){seen.add(key);out.push(Math.min(a,b),Math.max(a,b));}
+  }
+  return {edges:Int32Array.from(out),set:seen};
+}
+function buildModel(n,k,c){
+  const gens=makeGens(n,c);
+  const A=[];for(let i=0;i<n;i++)A.push(i<k?0:1);
+  const perms=allPerms(n),words=allWords(n,k);
+  const pIdx=new Map(perms.map((p,i)=>[p.join(""),i])),wIdx=new Map(words.map((w,i)=>[w.join(""),i]));
+  const cay=buildEdges(perms.length,perms,pIdx,gens,compose);
+  const sch=buildEdges(words.length,words,wIdx,gens,act);
+  const fiber=new Int32Array(perms.length),fiberSize=new Int32Array(words.length);
+  const inv=perms.map(p=>{const r=new Array(n);for(let i=0;i<n;i++)r[p[i]]=i;return r;});
+  for(let i=0;i<perms.length;i++){fiber[i]=wIdx.get(act(perms[i],A).join(""));fiberSize[fiber[i]]++;}
+  const ce=cay.edges,loop=new Uint8Array(ce.length/2);let loops=0,morphismOK=true;
+  const NS=words.length;
+  for(let e=0;e<ce.length;e+=2){
+    const a=fiber[ce[e]],b=fiber[ce[e+1]];
+    if(a===b){loop[e/2]=1;loops++;}
+    else if(!sch.set.has(a<b?a*NS+b:b*NS+a))morphismOK=false;
+  }
+  const rep=new Int32Array(NS).fill(-1);for(let i=0;i<perms.length;i++)if(rep[fiber[i]]<0)rep[fiber[i]]=i;
+  return {n,k,c,gens,perms,inv,words,cayEdges:ce,schEdges:sch.edges,fiber,fiberSize,rep,loop,loops,morphismOK,
+          cayInfo:graphInfo(perms.length,ce),schInfo:graphInfo(NS,sch.edges)};
+}
+/* Spec section 7 A+B. Run selfTest() in the console. */
+function selfTest(){
+  const log=[];let pass=true;const ok=(c,msg)=>{if(!c){pass=false;log.push("FAIL "+msg);}};
+  { const w=["a","b","c","d","e"],g=makeGens(5,3)[2]; ok(act(g,w).join("")==="acdbe","generator rotates window left: "+act(g,w).join("")); }
+  for(let n=3;n<=6;n++)for(let k=1;k<n;k++)for(const c of [3,4]){
+    const M=buildModel(n,k,c),t=`(n=${n},k=${k},c=${c})`;
+    ok(M.perms.length===factorial(n),"|V_Cay| "+t);
+    ok(M.words.length===binom(n,k),"|V_Sch| "+t);
+    ok(Array.from(M.fiberSize).every(s=>s===factorial(k)*factorial(n-k)),"fiber size "+t);
+    ok(M.morphismOK,"morphism "+t);
+    const d=2*Math.max(0,n-c+1);
+    ok(M.cayInfo.degMin===d&&M.cayInfo.degMax===d,"Cayley regular of degree "+d+" "+t);
+    if(c===3){ok(M.schInfo.comps===1,"Schreier connected "+t);ok(M.cayInfo.comps===2,"Cayley 2 comps "+t);}
+  }
+  const K=buildModel(4,2,4);
+  ok(K.words.length===6&&K.schInfo.comps===2&&K.schInfo.degMin===1&&K.schInfo.degMax===2,"known case c=4,n=4,k=2");
+  log.push(pass?"ALL PASS":"SOME FAILED");
+  return {pass,log};
+}
+
+/* ---------- seeded PRNG + layout (spec 4.1) ---------- */
+function xorshift(seed){let s=(seed|0)||0x9e3779b9;return ()=>{s^=s<<13;s^=s>>>17;s^=s<<5;return ((s>>>0)/4294967296);};}
+const PAD=26,TMIN=0.35;
+function makeLayout(N,edges,W,H,seed,padX){
+  const rnd=xorshift(seed),x=new Float64Array(N),y=new Float64Array(N),dx=new Float64Array(N),dy=new Float64Array(N);
+  const R=Math.min(W,H)*0.36;
+  for(let i=0;i<N;i++){const a=2*Math.PI*i/N;x[i]=W/2+R*Math.cos(a)+(rnd()-.5)*30;y[i]=H/2+R*Math.sin(a)+(rnd()-.5)*30;}
+  const Lo={N,edges,W,H,x,y,t:Math.min(W,H)/7,rnd};
+  Lo.step=function(){
+    const W=Lo.W,H=Lo.H,L=Math.sqrt(W*H/Math.max(N,1))*0.78,L2=L*L,cell=2*L;
+    const gw=Math.max(1,Math.ceil(W/cell)),gh=Math.max(1,Math.ceil(H/cell));
+    const head=new Int32Array(gw*gh).fill(-1),next=new Int32Array(N),cx=new Int32Array(N),cy=new Int32Array(N);
+    for(let i=0;i<N;i++){
+      cx[i]=Math.min(gw-1,Math.max(0,Math.floor(x[i]/cell)));cy[i]=Math.min(gh-1,Math.max(0,Math.floor(y[i]/cell)));
+      const c=cy[i]*gw+cx[i];next[i]=head[c];head[c]=i;dx[i]=0;dy[i]=0;
+    }
+    for(let i=0;i<N;i++){
+      for(let gy=cy[i]-1;gy<=cy[i]+1;gy++){ if(gy<0||gy>=gh)continue;
+        for(let gx=cx[i]-1;gx<=cx[i]+1;gx++){ if(gx<0||gx>=gw)continue;
+          for(let j=head[gy*gw+gx];j>=0;j=next[j]){ if(j===i)continue;
+            let ex=x[i]-x[j],ey=y[i]-y[j],d2=ex*ex+ey*ey;
+            if(d2<1e-4){ex=(Lo.rnd()-.5);ey=(Lo.rnd()-.5);d2=ex*ex+ey*ey+1e-4;}
+            const f=L2/d2; dx[i]+=ex*f; dy[i]+=ey*f;       // (L^2/d) * unit vector
+          }}}
+      dx[i]-=(x[i]-W/2)*0.0007*L; dy[i]-=(y[i]-(H/2+8))*0.0034*L; // faint pull to center keeps components on canvas
+    }
+    for(let e=0;e<edges.length;e+=2){
+      const a=edges[e],b=edges[e+1],ex=x[a]-x[b],ey=y[a]-y[b],d=Math.sqrt(ex*ex+ey*ey)+1e-6,f=d/L; // (d^2/L)/d
+      dx[a]-=ex*f;dy[a]-=ey*f;dx[b]+=ex*f;dy[b]+=ey*f;
+    }
+    const t=Lo.t;
+    for(let i=0;i<N;i++){
+      const d=Math.sqrt(dx[i]*dx[i]+dy[i]*dy[i]);
+      if(d>0){const s=Math.min(d,t)/d;x[i]+=dx[i]*s;y[i]+=dy[i]*s;}
+      x[i]=Math.min(W-padX,Math.max(padX,x[i]));y[i]=Math.min(H-PAD,Math.max(PAD+18,y[i]));
+    }
+    Lo.t*=0.982;
+  };
+  Lo.resize=function(nw,nh){const sx=nw/Lo.W,sy=nh/Lo.H;for(let i=0;i<N;i++){x[i]*=sx;y[i]*=sy;}Lo.W=nw;Lo.H=nh;};
+  return Lo;
+}
+
+/* rotate a layout about its centroid so its long axis lies along the (wider) x direction */
+function alignWide(Lo){
+  const N=Lo.N,x=Lo.x,y=Lo.y;let mx=0,my=0;for(let i=0;i<N;i++){mx+=x[i];my+=y[i];}mx/=N;my/=N;
+  let a=0,b=0,c=0;for(let i=0;i<N;i++){const u=x[i]-mx,v=y[i]-my;a+=u*u;b+=u*v;c+=v*v;}
+  const th=-0.5*Math.atan2(2*b,a-c),cs=Math.cos(th),sn=Math.sin(th);
+  for(let i=0;i<N;i++){const u=x[i]-mx,v=y[i]-my;x[i]=Lo.W/2+u*cs-v*sn;y[i]=Lo.H/2+u*sn+v*cs;}
+}
+/* ---------- state ---------- */
+const $=id=>document.getElementById(id);
+const cvC=$("cvC"),cvS=$("cvS"),ctxC=cvC.getContext("2d"),ctxS=cvS.getContext("2d");
+const DARK=[35,42,58],LIGHT=[233,237,245],DUR=2600,BEAD_LIMIT=200;
+const S={n:4,k:2,c:3,M:null,LC:null,LS:null,phase:"idle",t0:0,t:0,from:null,hover:-1,dirty:true,
+         curX:null,curY:null,labelRGB:[],fiberCol:[]};
+const m=s=>`<span class="m">${s}</span>`,mr=s=>`<span class="mr">${s}</span>`,fmt=x=>x.toLocaleString("en-US");
+
+function hslToRgb(h,s,l){h/=360;const q=l<.5?l*(1+s):l+s-l*s,p=2*l-q;
+  const f=t=>{t=(t%1+1)%1;return t<1/6?p+(q-p)*6*t:t<.5?q:t<2/3?p+(q-p)*(2/3-t)*6:p;};
+  return [Math.round(f(h+1/3)*255),Math.round(f(h)*255),Math.round(f(h-1/3)*255)];}
+const rgbStr=c=>`rgb(${c[0]|0},${c[1]|0},${c[2]|0})`;
+
+function fit(cv,ctx){
+  const dpr=window.devicePixelRatio||1,w=Math.max(200,cv.clientWidth),h=cv.clientHeight||420;
+  cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);
+  return [w,h];
+}
+function rebuild(){
+  const {n,k,c}=S;
+  const M=S.M=buildModel(n,k,c),seed=n*1000+k*100+c*7+12345;
+  const [wc,hc]=fit(cvC,ctxC),[ws,hs]=fit(cvS,ctxS);
+  const hw=N=>10+n*(2*beadR(N)+1)/2;
+  S.LC=makeLayout(M.perms.length,M.cayEdges,wc,hc,seed,M.perms.length<=BEAD_LIMIT?hw(M.perms.length):PAD);
+  S.LS=makeLayout(M.words.length,M.schEdges,ws,hs,seed^0x5bd1e995,hw(M.words.length));
+  for(let i=0;i<260;i++){S.LS.step();if(i===120)alignWide(S.LS);}
+  S.phase="idle";S.t=0;S.hover=-1;S.from=null;
+  S.curX=new Float64Array(M.perms.length);S.curY=new Float64Array(M.perms.length);
+  S.labelRGB=[];for(let l=0;l<n;l++)S.labelRGB.push(hslToRgb(360*l/n,.62,.52));
+  S.fiberCol=[];for(let f=0;f<M.words.length;f++)S.fiberCol.push(rgbStr(hslToRgb(360*f/M.words.length,.58,.5)));
+  $("start").disabled=false;
+  renderText();S.dirty=true;
+}
+
+/* ---------- text ---------- */
+function degStr(i){return i.degMin===i.degMax?String(i.degMin):i.degMin+"–"+i.degMax;}
+function foot(N,E,i){return `<span>vertices <b>${fmt(N)}</b></span><span>edges <b>${fmt(E)}</b></span><span>components <b>${i.comps}</b></span><span>degree <b>${degStr(i)}</b></span>`;}
+function renderText(){
+  const M=S.M,{n,k,c}=S,NF=factorial(n),NC=binom(n,k),FS=factorial(k)*factorial(n-k);
+  const EC=M.cayEdges.length/2,ES=M.schEdges.length/2,ci=M.cayInfo,si=M.schInfo;
+  $("cT1").textContent=c;$("cT2").textContent=c;
+  $("ftC").innerHTML=foot(NF,EC,ci);$("ftS").innerHTML=foot(NC,ES,si);
+  $("stC").textContent=fmt(NF);$("stS").textContent=fmt(NC);$("stF").textContent=fmt(FS);
+  const pct=EC?100*M.loops/EC:0;$("stL").textContent=(pct%1?pct.toFixed(1):pct)+"%";
+  $("ovS").innerHTML=`<b>${fmt(NC)}</b> rooms`;
+  const P=[];
+  let p=`With ${m("n")} ${mr("= "+n)}, ${m("k")} ${mr("= "+k)}, ${m("c")} ${mr("= "+c)}: the ${mr(n+"! = "+fmt(NF))} elements of ${m("S<sub>"+n+"</sub>")} collapse onto ${m("C")}${mr("("+n+","+k+") = "+fmt(NC))} cosets of ${m("S<sub>"+k+"</sub>")} ${mr("×")} ${m("S<sub>"+(n-k)+"</sub>")}, and every fiber holds exactly ${mr(k+"! · "+(n-k)+"! = "+fmt(FS))} of them. `;
+  if(M.loops>0) p+=`Of the ${fmt(EC)} Cayley edges, ${fmt(M.loops)} (${pct.toFixed(1)}%) have both ends inside one fiber. After the collapse they are loops, moves the coarse map cannot see. That is the information the collapse destroys; the remaining ${fmt(EC-M.loops)} edges pile onto ${fmt(ES)} Schreier edges.`;
+  else p+=`No Cayley edge has both ends inside one fiber, so none turns into a loop for these parameters. Information is still lost by merging: ${fmt(EC)} Cayley edges pile onto ${fmt(ES)} Schreier edges.`;
+  P.push(p);
+  if(ci.comps>1){
+    const ord=NF/ci.comps;let q=`The Cayley panel shows ${ci.comps} components, and that is not a bug. A Cayley graph is connected only when its generators generate the whole group. `;
+    if(c%2===1){
+      q+=`For odd ${m("c")} a ${m("c")}-cycle is an <em>even</em> permutation, so the generators never leave the alternating group ${m("A<sub>"+n+"</sub>")}`;
+      q+= ci.comps===2?`; they generate exactly ${m("A<sub>"+n+"</sub>")}, of order ${fmt(ord)}, and its two cosets are the two components. `
+                      :`; here they generate a subgroup of order ${fmt(ord)}, and its ${ci.comps} cosets are the components. `;
+    } else q+=`Here the ${M.gens.length} generators generate only a subgroup of order ${fmt(ord)}, and its ${ci.comps} cosets are the components. `;
+    q+= si.comps===1?`The Schreier graph is connected all the same: each coset of ${m("S<sub>"+k+"</sub>")} ${mr("×")} ${m("S<sub>"+(n-k)+"</sub>")} contains elements from every Cayley component, so the components are glued together by the collapse.`
+                    :`The Schreier graph is disconnected as well, with ${si.comps} components.`;
+    P.push(q);
+  }
+  const nonreg=si.degMin!==si.degMax;
+  if(nonreg||si.comps>1){
+    let q=`The Schreier graph here `;
+    if(si.comps>1&&nonreg)q+=`falls into ${si.comps} components and is not regular: its degrees range over ${si.degMin}–${si.degMax}. `;
+    else if(nonreg)q+=`is not regular: its degrees range over ${si.degMin}–${si.degMax}. `;
+    else q+=`falls into ${si.comps} components. `;
+    if(nonreg)q+=`A Cayley graph is always vertex-transitive, since right multiplication by any group element is a symmetry, and a vertex-transitive graph is regular. A graph that is not regular therefore cannot be a Cayley graph of any group, under any generating set. For these parameters the name "Cayley" is ruled out by the degree sequence alone.`;
+    else q+=`Its degrees happen to be equal, so regularity does not separate the two notions at these parameters; the vertex count ${fmt(NC)} against ${fmt(NF)} still does.`;
+    P.push(q);
+  }
+  $("prose").innerHTML=P.map(s=>"<p>"+s+"</p>").join("");
+}
+
+/* ---------- drawing ---------- */
+function beadR(N){return N>60?2.5:N>30?3.2:N>12?4.2:5;}
+function drawRow(ctx,x,y,n,r,colAt,ring){
+  const step=2*r+1,x0=x-step*(n-1)/2;
+  if(ring){ctx.lineWidth=2;ctx.strokeStyle="#d97706";ctx.beginPath();
+    const w=step*(n-1)+2*r+8,h=2*r+8;ctx.roundRect?ctx.roundRect(x-w/2,y-h/2,w,h,h/2):ctx.rect(x-w/2,y-h/2,w,h);
+    ctx.fillStyle="rgba(255,255,255,.9)";ctx.fill();ctx.stroke();}
+  ctx.lineWidth=.8;ctx.strokeStyle="#8f98ab";
+  for(let j=0;j<n;j++){ctx.beginPath();ctx.arc(x0+j*step,y,r,0,6.2832);ctx.fillStyle=colAt(j);ctx.fill();ctx.stroke();}
+}
+function strokeEdges(ctx,edges,X,Y,test,style,lw){
+  ctx.beginPath();let any=false;
+  for(let e=0;e<edges.length;e+=2){if(!test(e>>1,edges[e],edges[e+1]))continue;any=true;ctx.moveTo(X[edges[e]],Y[edges[e]]);ctx.lineTo(X[edges[e+1]],Y[edges[e+1]]);}
+  if(any){ctx.strokeStyle=style;ctx.lineWidth=lw;ctx.stroke();}
+}
+function draw(){
+  const M=S.M,LC=S.LC,LS=S.LS,n=S.n,t=S.t,e=t*t*(3-2*t),hv=S.hover,NP=M.perms.length,NW=M.words.length;
+  const fib=M.fiber,X=S.curX,Y=S.curY;
+  /* current Cayley positions */
+  if(S.phase==="idle"){X.set(LC.x);Y.set(LC.y);}
+  else{const sx=LC.W/LS.W,sy=LC.H/LS.H;
+    for(let i=0;i<NP;i++){const tx=LS.x[fib[i]]*sx,ty=LS.y[fib[i]]*sy;X[i]=S.from.x[i]+(tx-S.from.x[i])*e;Y[i]=S.from.y[i]+(ty-S.from.y[i])*e;}}
+  /* --- Cayley panel --- */
+  let ctx=ctxC;ctx.clearRect(0,0,LC.W,LC.H);
+  const EC=M.cayEdges.length/2;
+  const aEnd=0.34, /* coincident segments in one path composite once */ aNon=0.20+(aEnd-0.20)*e,aLoop=0.20*(1-t)*(1-t),lp=M.loop;
+  const col=a=>`rgba(79,70,229,${a.toFixed(4)})`;
+  if(hv<0){
+    strokeEdges(ctx,M.cayEdges,X,Y,i=>!lp[i],col(aNon),1);
+    if(aLoop>0.002)strokeEdges(ctx,M.cayEdges,X,Y,i=>lp[i],col(aLoop),1);
+  }else{
+    const inc=(i,a,b)=>fib[a]===hv||fib[b]===hv;
+    strokeEdges(ctx,M.cayEdges,X,Y,(i,a,b)=>!lp[i]&&!inc(i,a,b),col(aNon*0.3),1);
+    if(aLoop>0.002)strokeEdges(ctx,M.cayEdges,X,Y,(i,a,b)=>lp[i]&&!inc(i,a,b),col(aLoop*0.3),1);
+    strokeEdges(ctx,M.cayEdges,X,Y,(i,a,b)=>!lp[i]&&inc(i,a,b),col(Math.min(.8,aNon*3+.15)),1.3);
+    if(aLoop>0.002)strokeEdges(ctx,M.cayEdges,X,Y,(i,a,b)=>lp[i]&&inc(i,a,b),col(Math.min(.8,aLoop*3.5)),1.3);
+  }
+  const rS=beadR(NW);
+  if(S.phase==="collapsed"){
+    for(let pass=0;pass<2;pass++)for(let f=0;f<NW;f++){
+      const hot=f===hv;if((pass===1)!==hot)continue;
+      ctx.globalAlpha=hv>=0&&!hot?0.2:1;const w=M.words[f];
+      drawRow(ctx,X[M.rep[f]],Y[M.rep[f]],n,rS,j=>w[j]?rgbStr(LIGHT):rgbStr(DARK),hot);
+    }
+  }else if(NP<=BEAD_LIMIT){
+    const cols=[];for(let l=0;l<n;l++){const a=S.labelRGB[l],b=l<S.k?DARK:LIGHT;cols.push(rgbStr([a[0]+(b[0]-a[0])*e,a[1]+(b[1]-a[1])*e,a[2]+(b[2]-a[2])*e]));}
+    const r0=beadR(NP),r=r0+(rS-r0)*e;
+    for(let pass=0;pass<2;pass++)for(let i=0;i<NP;i++){
+      const hot=fib[i]===hv;if((pass===1)!==hot)continue;
+      ctx.globalAlpha=hv>=0&&!hot?0.2:1;const iv=M.inv[i];
+      drawRow(ctx,X[i],Y[i],n,r,j=>cols[iv[j]],hot);
+    }
+  }else{
+    ctx.lineWidth=.7;
+    for(let pass=0;pass<2;pass++)for(let i=0;i<NP;i++){
+      const hot=fib[i]===hv;if((pass===1)!==hot)continue;
+      ctx.globalAlpha=hv>=0&&!hot?0.2:1;
+      ctx.beginPath();ctx.arc(X[i],Y[i],hot?4.2:3,0,6.2832);ctx.fillStyle=S.fiberCol[fib[i]];ctx.fill();
+      ctx.strokeStyle=hot?"#d97706":"#8f98ab";ctx.lineWidth=hot?2:.7;ctx.stroke();
+    }
+  }
+  ctx.globalAlpha=1;
+  /* --- Schreier panel --- */
+  ctx=ctxS;ctx.clearRect(0,0,LS.W,LS.H);
+  const colS=a=>`rgba(13,127,115,${a})`;
+  if(hv<0)strokeEdges(ctx,M.schEdges,LS.x,LS.y,()=>true,colS(.34),1.2);
+  else{strokeEdges(ctx,M.schEdges,LS.x,LS.y,(i,a,b)=>a!==hv&&b!==hv,colS(.12),1.2);
+       strokeEdges(ctx,M.schEdges,LS.x,LS.y,(i,a,b)=>a===hv||b===hv,colS(.85),1.6);}
+  for(let pass=0;pass<2;pass++)for(let f=0;f<NW;f++){
+    const hot=f===hv;if((pass===1)!==hot)continue;
+    ctx.globalAlpha=hv>=0&&!hot?0.2:1;const w=M.words[f];
+    drawRow(ctx,LS.x[f],LS.y[f],n,rS,j=>w[j]?rgbStr(LIGHT):rgbStr(DARK),hot);
+  }
+  ctx.globalAlpha=1;
+  /* overlay */
+  const NF=NP,rooms=Math.round(NF+(NW-NF)*e);
+  $("ovC").innerHTML=S.phase==="collapsed"?`<b>${fmt(NW)}</b> rooms: this panel is now exactly the Schreier graph on the right`
+                                          :`<b>${fmt(rooms)}</b> rooms`;
+}
+function frame(ts){
+  let active=false;
+  if(S.LS.t>TMIN){S.LS.step();S.LS.step();active=true;}
+  if(S.phase==="idle"&&S.LC.t>TMIN){S.LC.step();S.LC.step();active=true;}
+  if(S.phase==="collapsing"){let t=(ts-S.t0)/DUR;if(t>=1){t=1;S.phase="collapsed";}S.t=Math.max(0,t);active=true;}
+  if(active||S.dirty){S.dirty=false;draw();}
+  requestAnimationFrame(frame);
+}
+
+/* ---------- interaction ---------- */
+function nearest(X,Y,N,mx,my){let best=-1,bd=26*26;for(let i=0;i<N;i++){const d=(X[i]-mx)**2+(Y[i]-my)**2;if(d<bd){bd=d;best=i;}}return best;}
+function hoverOn(cv,isCay){
+  cv.addEventListener("mousemove",ev=>{
+    const r=cv.getBoundingClientRect(),mx=ev.clientX-r.left,my=ev.clientY-r.top;
+    const v=isCay?nearest(S.curX,S.curY,S.M.perms.length,mx,my):nearest(S.LS.x,S.LS.y,S.M.words.length,mx,my);
+    const f=v<0?-1:(isCay?S.M.fiber[v]:v);
+    if(f!==S.hover){S.hover=f;S.dirty=true;}
+  });
+  cv.addEventListener("mouseleave",()=>{if(S.hover!==-1){S.hover=-1;S.dirty=true;}});
+}
+hoverOn(cvC,true);hoverOn(cvS,false);
+
+function syncControls(){
+  const nR=$("nR"),kR=$("kR");
+  S.n=+nR.value;kR.max=S.n-1;
+  S.k=Math.min(Math.max(1,+kR.value),S.n-1);kR.value=S.k;      // clamp k whenever n changes
+  if(S.n<4)S.c=3;                                               // no window of length 4 fits in 3 positions
+  $("c4").disabled=S.n<4;
+  $("nO").textContent=S.n;$("kO").textContent=S.k;
+  $("c3").setAttribute("aria-pressed",S.c===3);$("c4").setAttribute("aria-pressed",S.c===4);
+  rebuild();
+}
+$("nR").addEventListener("input",syncControls);$("kR").addEventListener("input",syncControls);
+$("c3").addEventListener("click",()=>{S.c=3;syncControls();});
+$("c4").addEventListener("click",()=>{S.c=4;syncControls();});
+$("start").addEventListener("click",()=>{
+  if(S.phase!=="idle")return;
+  S.from={x:Float64Array.from(S.LC.x),y:Float64Array.from(S.LC.y)};
+  S.phase="collapsing";S.t=0;S.t0=performance.now();$("start").disabled=true;
+});
+$("reset").addEventListener("click",rebuild);
+const bd=$("backdrop");
+$("help").addEventListener("click",()=>{bd.classList.add("open");$("closeHelp").focus();});
+$("closeHelp").addEventListener("click",()=>{bd.classList.remove("open");$("help").focus();});
+bd.addEventListener("click",ev=>{if(ev.target===bd)bd.classList.remove("open");});
+document.addEventListener("keydown",ev=>{if(ev.key==="Escape")bd.classList.remove("open");});
+let rz=0;window.addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(()=>{
+  const ow=S.LC.W,oh=S.LC.H,[wc,hc]=fit(cvC,ctxC),[ws,hs]=fit(cvS,ctxS);S.LC.resize(wc,hc);S.LS.resize(ws,hs);
+  if(S.from)for(let i=0;i<S.from.x.length;i++){S.from.x[i]*=wc/ow;S.from.y[i]*=hc/oh;}
+  S.dirty=true;},80);});
+
+$("findBody").innerHTML=FINDINGS.map(f=>`<tr><td>${f.line}</td><td>${f.text}</td><td><span class="v ${f.cls}">${f.verdict}</span></td><td>${f.note}</td></tr>`).join("");
+window.selfTest=selfTest;
+syncControls();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
